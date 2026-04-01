@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- 데이터 추출 규칙에 대한 자세한 내용은 https://developer.android.com/guide/topics/data/autobackup 을 참조하세요. -->
+    </cloud-backup>
+    <device-transfer>
+        <!-- 기기 간 이동 시 제외하거나 포함할 데이터 규칙을 여기에 정의할 수 있습니다. -->
+    </device-transfer>
+</data-extraction-rules>
