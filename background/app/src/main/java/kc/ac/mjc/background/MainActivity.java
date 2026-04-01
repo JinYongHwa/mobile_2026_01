@@ -16,6 +16,7 @@ import android.widget.ProgressBar;
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -24,7 +25,6 @@ public class MainActivity extends AppCompatActivity {
 
     ProgressBar progressBar;       //다운로드 상황 보여주는 위젯
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -37,16 +37,17 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
         //권한 체크하기
-        int status=checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS);
-        if (status != PackageManager.PERMISSION_GRANTED) {  //사용자가 권한 동의 한적 없을때
-            //백그라운드 작업 알림 동의받기
-            requestPermissions(new String[]{
-                    Manifest.permission.POST_NOTIFICATIONS
-            },1000);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            int status=checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS);
+            if (status != PackageManager.PERMISSION_GRANTED) {  //사용자가 권한 동의 한적 없을때
+                //백그라운드 작업 알림 동의받기
+                requestPermissions(new String[]{
+                        Manifest.permission.POST_NOTIFICATIONS
+                },1000);
+            }
         }
-
-
 
         //다운로드버튼 레이아웃에서 가져오기
         Button downloadBtn=findViewById(R.id.download_btn);
@@ -54,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {   //다운로드 버튼 클릭시 실행
                 Intent intent=new Intent(MainActivity.this,DownloadService.class);
-                startService(intent);   //DownloadService 실행
+                ContextCompat.startForegroundService(MainActivity.this, intent);   //DownloadService 실행
                 finish();   //현재의 화면 종료
             }
         });
@@ -63,13 +64,17 @@ public class MainActivity extends AppCompatActivity {
         DownloadReceiver receiver=new DownloadReceiver();
         IntentFilter filter=new IntentFilter();
         filter.addAction("download_progress");      //download_progress 방송만 듣도록 필터링
-        registerReceiver(receiver,filter,Context.RECEIVER_NOT_EXPORTED);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(receiver, filter);
+        }
     }
 
     class DownloadReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
-
             int progress=intent.getIntExtra("progress",0);
             Log.d("MainActivity","progress:"+progress);
             progressBar.setProgress(progress);

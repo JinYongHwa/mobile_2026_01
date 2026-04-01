@@ -1,8 +1,5 @@
 package kc.ac.mjc.background;
 
-import static android.app.Notification.PRIORITY_HIGH;
-import static android.app.Notification.PRIORITY_LOW;
-import static android.app.NotificationManager.IMPORTANCE_HIGH;
 import static android.app.NotificationManager.IMPORTANCE_LOW;
 
 import android.app.Notification;
@@ -10,6 +7,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
@@ -18,11 +16,12 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 public class DownloadService extends Service {
-    int count=0; //0->100 까지 올라갈 변수
+    int count = 0; //0->100 까지 올라갈 변수
     Notification notification;      //사용자에게 보여질 알람
 
-    final int NOTIFICATION_ID=1000;
+    final int NOTIFICATION_ID = 1000;
     NotificationCompat.Builder builder;
+    NotificationManager nm;
 
     @Nullable
     @Override
@@ -31,50 +30,61 @@ public class DownloadService extends Service {
     }
 
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        //백그라운드에서 돌아갈 코드
-        NotificationManager nm=getSystemService(NotificationManager.class);
+    public void onCreate() {
+        super.onCreate();
 
+        nm = getSystemService(NotificationManager.class);
+
+        String channelId = "download";
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel=new NotificationChannel("download","download",IMPORTANCE_LOW);
-
-            builder=new NotificationCompat.Builder(this,"download")
-                    .setContentTitle("다운로드")
-                    .setContentText("다운로드중..")
-                    .setSmallIcon(R.mipmap.ic_launcher)
-                    .setOngoing(true)
-                    .setChannelId("download")
-                    .setProgress(100,count,false)
-                    .setPriority(NotificationCompat.PRIORITY_LOW);
+            NotificationChannel channel = new NotificationChannel(channelId, "download", IMPORTANCE_LOW);
             nm.createNotificationChannel(channel);
-            nm.notify(NOTIFICATION_ID,builder.build());
         }
 
+        builder = new NotificationCompat.Builder(this, channelId)
+                .setContentTitle("다운로드")
+                .setContentText("다운로드중..")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setOngoing(true)
+                .setProgress(100, count, false)
+                .setPriority(NotificationCompat.PRIORITY_LOW);
 
+        notification = builder.build();
 
-        Thread t=new Thread(new Runnable() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+        } else {
+            startForeground(NOTIFICATION_ID, notification);
+        }
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
-                for(int i=0;i<=101;i+=10){
-                    count=i;
-                    builder.setProgress(100,count,false);
-                    nm.notify(NOTIFICATION_ID,builder.build());
-                    Log.d("DownloadService","count :"+count);
+                for (int i = 0; i <= 101; i += 5) {
+                    count = i;
+                    if (builder != null) {
+                        builder.setProgress(100, count, false);
+                        notification = builder.build();
+                        nm.notify(NOTIFICATION_ID, notification);
+                    }
+                    Log.d("DownloadService", "count :" + count);
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
-                        Log.d("DownloadService","interrupt");
-//                        throw new RuntimeException(e);
+                        Log.d("DownloadService", "interrupt");
                     }
 
 
-                    if(count>=100){
+                    if (count >= 100) {
                         nm.cancel(NOTIFICATION_ID);
                         stopSelf();
                     }
-                    Intent intent=new Intent();
+                    Intent intent = new Intent();
                     intent.setAction("download_progress");
-                    intent.putExtra("progress",count);
+                    intent.putExtra("progress", count);
                     intent.setPackage(getPackageName());
                     sendBroadcast(intent);  //download_progress 채널로 방송
                 }
