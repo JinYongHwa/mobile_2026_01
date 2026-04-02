@@ -4,6 +4,7 @@ import static android.app.Notification.PRIORITY_HIGH;
 import static android.app.Notification.PRIORITY_LOW;
 import static android.app.NotificationManager.IMPORTANCE_HIGH;
 import static android.app.NotificationManager.IMPORTANCE_LOW;
+import static android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -47,7 +48,15 @@ public class DownloadService extends Service {
                     .setProgress(100,count,false)
                     .setPriority(NotificationCompat.PRIORITY_LOW);
             nm.createNotificationChannel(channel);
-            nm.notify(NOTIFICATION_ID,builder.build());
+            notification=builder.build();
+            nm.notify(NOTIFICATION_ID,notification);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID,notification,FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+            }
+            else{
+                startForeground(NOTIFICATION_ID,notification);
+            }
         }
 
 
@@ -55,10 +64,11 @@ public class DownloadService extends Service {
         Thread t=new Thread(new Runnable() {
             @Override
             public void run() {
-                for(int i=0;i<=101;i+=10){
+                for(int i=0;i<=101;i+=1){
                     count=i;
                     builder.setProgress(100,count,false);
-                    nm.notify(NOTIFICATION_ID,builder.build());
+                    notification=builder.build();
+                    nm.notify(NOTIFICATION_ID,notification);
                     Log.d("DownloadService","count :"+count);
                     try {
                         Thread.sleep(1000);
@@ -66,8 +76,6 @@ public class DownloadService extends Service {
                         Log.d("DownloadService","interrupt");
 //                        throw new RuntimeException(e);
                     }
-
-
                     if(count>=100){
                         nm.cancel(NOTIFICATION_ID);
                         stopSelf();
